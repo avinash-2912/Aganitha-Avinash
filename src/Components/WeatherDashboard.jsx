@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BsSnow2,
   BsFillSunFill,
@@ -15,6 +15,10 @@ const WeatherDashboard = () => {
   const [selectedUnit, setSelectedUnit] = useState('celsius');
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [favorites, setFavorites] = useState(() => {
+    const storedFavorites = localStorage.getItem('weather-favorites');
+    return storedFavorites ? JSON.parse(storedFavorites) : [];
+  });
 
   const handleUnitChange = (unit) => setSelectedUnit(unit);
 
@@ -120,7 +124,7 @@ const WeatherDashboard = () => {
         gifURL = 'https://media.giphy.com/media/gjUHpcyu6cdZdNtmkV/giphy.gif';
         break;
       case 'rain':
-        gifURL = 'https://media.giphy.com/media/l2ir9TVxVFOcDzMAzB/giphy.gif';
+        gifURL = 'https://media.giphy.com/media/l2ir9TVxVFOcDzMAzG/giphy.gif';
         break;
       case 'snow':
         gifURL = 'https://media.giphy.com/media/IiG1Moma7qgN2/giphy.gif';
@@ -145,6 +149,42 @@ const WeatherDashboard = () => {
         return 'bg-gray-300';
       default:
         return 'bg-gray-200';
+    }
+  };
+
+  const addFavorite = () => {
+    if (weatherData && !favorites.includes(weatherData.name)) {
+      const updatedFavorites = [...favorites, weatherData.name];
+      setFavorites(updatedFavorites);
+      localStorage.setItem(
+        'weather-favorites',
+        JSON.stringify(updatedFavorites)
+      );
+    }
+  };
+
+  const removeFavorite = (locationName) => {
+    const updatedFavorites = favorites.filter((fav) => fav !== locationName);
+    setFavorites(updatedFavorites);
+    localStorage.setItem('weather-favorites', JSON.stringify(updatedFavorites));
+  };
+
+  const handleFavoriteClick = async (locationName) => {
+    try {
+      setError(null);
+      setIsLoading(true);
+
+      const currentWeather = await WeatherData.getCurrentWeather(locationName);
+      const threeDayForecast = await WeatherData.getThreeDayForecast(locationName);
+
+      setWeatherData(currentWeather);
+      setForecastData(threeDayForecast);
+    } catch (error) {
+      setError('Unable to fetch weather data for the selected favorite. Please try again.');
+      setWeatherData(null);
+      setForecastData(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -174,29 +214,70 @@ const WeatherDashboard = () => {
         >
           Use My Location 📍
         </button>
-
-        <div className="flex gap-2 justify-center">
-          <button
-            onClick={() => handleUnitChange('celsius')}
-            className={`px-4 py-2 rounded ${
-              selectedUnit === 'celsius'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-300'
-            }`}
-          >
-            °C
-          </button>
-          <button
-            onClick={() => handleUnitChange('fahrenheit')}
-            className={`px-4 py-2 rounded ${
-              selectedUnit === 'fahrenheit'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-300'
-            }`}
-          >
-            °F
-          </button>
+        <div className="mb-4 flex items-center justify-center">
+          <div className="flex items-center">
+            <label
+              htmlFor="celsius"
+              className={`radio-label ${
+                selectedUnit === 'celsius'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-300 text-gray-600'
+              } px-4 py-2 rounded-full cursor-pointer mr-2 transition duration-300 ease-in-out transform hover:scale-105`}
+            >
+              <input
+                type="radio"
+                id="celsius"
+                value="celsius"
+                checked={selectedUnit === 'celsius'}
+                onChange={() => handleUnitChange('celsius')}
+                className="hidden"
+              />
+              °C
+            </label>
+            <label
+              htmlFor="fahrenheit"
+              className={`radio-label ${
+                selectedUnit === 'fahrenheit'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-300 text-gray-600'
+              } px-4 py-2 rounded-full cursor-pointer transition duration-300 ease-in-out transform hover:scale-105`}
+            >
+              <input
+                type="radio"
+                id="fahrenheit"
+                value="fahrenheit"
+                checked={selectedUnit === 'fahrenheit'}
+                onChange={() => handleUnitChange('fahrenheit')}
+                className="hidden"
+              />
+              °F
+            </label>
+          </div>
         </div>
+
+        {favorites.length > 0 && (
+          <div className="flex flex-col mt-6">
+            <h3 className="text-xl font-semibold">Favorite Locations:</h3>
+            <ul className="list-none">
+              {favorites.map((favorite) => (
+                <li key={favorite} className="flex items-center justify-between mb-2">
+                  <button
+                    onClick={() => handleFavoriteClick(favorite)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    {favorite}
+                  </button>
+                  <button
+                    onClick={() => removeFavorite(favorite)}
+                    className="ml-2 text-red-600 hover:text-red-800"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -214,27 +295,30 @@ const WeatherDashboard = () => {
             <h2 className="text-2xl font-bold">
               {weatherData.name}, {weatherData.sys.country}
             </h2>
+            <p className="text-lg">Date: {formatDate(new Date())}</p>
             <p className="text-lg">
               Temperature: {convertTemperature(weatherData.main.temp)}
             </p>
-            <p className="text-lg">
-              Condition: {weatherData.weather[0]?.description}
-            </p>
-            <p>Wind: {weatherData.wind.speed} m/s</p>
-            <p>Humidity: {weatherData.main.humidity}%</p>
-            <p className="text-lg">Date: {formatDate(new Date())}</p>
+            <p className="text-lg">Humidity: {weatherData.main.humidity}%</p>
+            <p className="text-lg">Wind Speed: {weatherData.wind.speed} m/s</p>
+            <button
+              onClick={addFavorite}
+              className="mt-4 p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Add to Favorites
+            </button>
           </div>
-          <div className="ml-auto">
+          <div className="flex-1">
             <img
               src={getGif()}
-              alt="Weather GIF"
-              className="w-32 h-32 rounded-lg shadow-md" // Center the GIF within the current weather card
+              alt="Weather Condition"
+              className="rounded-lg shadow-md w-full h-64 object-cover"
             />
           </div>
         </div>
       ) : (
-        <p className="text-lg mt-8 text-gray-600">
-          Enter a location to see the weather information.
+        <p className="text-lg mt-4">
+          Please enter a location and press search.
         </p>
       )}
 
@@ -244,7 +328,7 @@ const WeatherDashboard = () => {
           <div className="grid grid-cols-3 gap-4 mt-4">
             {forecastData?.list.slice(0, 3).map((dayForecast, index) => {
               const forecastDate = new Date(dayForecast.dt * 1000);
-              forecastDate.setDate(new Date().getDate() + index);
+              forecastDate.setDate(new Date().getDate() + index + 1);
 
               return (
                 <div
