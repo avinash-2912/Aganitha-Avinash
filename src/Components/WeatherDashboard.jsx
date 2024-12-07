@@ -220,6 +220,8 @@ const WeatherDashboard = () => {
             <p className="text-lg">
               Condition: {weatherData.weather[0]?.description}
             </p>
+            <p>Wind: {weatherData.wind.speed} m/s</p>
+            <p>Humidity: {weatherData.main.humidity}%</p>
             <p className="text-lg">Date: {formatDate(new Date())}</p>
           </div>
           <div className="ml-auto">
@@ -251,6 +253,9 @@ const WeatherDashboard = () => {
                     dayForecast.weather[0]?.main
                   )}`}
                 >
+                  <div className="text-4xl">
+                    {getWeatherIcon(dayForecast.weather[0]?.main)}
+                  </div>
                   <h4 className="text-lg font-bold">
                     {formatDate(forecastDate)}
                   </h4>
@@ -260,9 +265,8 @@ const WeatherDashboard = () => {
                   <p className="text-md">
                     Temp: {convertTemperature(dayForecast.main.temp)}
                   </p>
-                  <div className="text-4xl">
-                    {getWeatherIcon(dayForecast.weather[0]?.main)}
-                  </div>
+                  <p>Wind: {dayForecast.wind.speed} m/s</p>
+                  <p>Humidity: {dayForecast.main.humidity}%</p>
                 </div>
               );
             })}
