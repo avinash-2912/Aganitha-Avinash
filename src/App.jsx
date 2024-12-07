@@ -1,4 +1,4 @@
-import { WeatherDashboard } from './Components/WeatherDashboard';
+import  WeatherDashboard  from './Components/WeatherDashboard';
 
 const App = () => {
   return (
